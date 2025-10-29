@@ -27,11 +27,18 @@ SRC_URI = "${GITHUB_BASE_URI}/download/v${PV}/Linux-PAM-${PV}.tar.xz \
            file://0001-pam_namespace-include-stdint-h.patch \
            file://0001-pam_pwhistory-fix-passing-NULL-filename-argument-to-.patch \
            file://CVE-2024-22365.patch \
+           file://CVE-2024-10041-1.patch \
+           file://CVE-2024-10041-2.patch \
+           file://0001-pam-inline-pam-asprintf.patch \
+           file://0002-pam-namespace-rebase.patch \
+           file://CVE-2025-6020-01.patch \
+           file://CVE-2025-6020-02.patch \
+           file://CVE-2025-6020-03.patch \
            "
 
 SRC_URI[sha256sum] = "7ac4b50feee004a9fa88f1dfd2d2fa738a82896763050cd773b3c54b0a818283"
 
-DEPENDS = "bison-native flex-native cracklib libxml2-native virtual/crypt"
+DEPENDS = "bison-native flex-native libxml2-native virtual/crypt"
 
 EXTRA_OECONF = "--includedir=${includedir}/security \
                 --libdir=${base_libdir} \

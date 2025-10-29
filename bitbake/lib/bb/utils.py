@@ -1854,15 +1854,42 @@ def path_is_descendant(descendant, ancestor):
 
     return False
 
+# Recomputing the sets in signal.py is expensive (bitbake -pP idle)
+# so try and use _signal directly to avoid it
+valid_signals = signal.valid_signals()
+try:
+    import _signal
+    sigmask = _signal.pthread_sigmask
+except ImportError:
+    sigmask = signal.pthread_sigmask
+
 # If we don't have a timeout of some kind and a process/thread exits badly (for example
 # OOM killed) and held a lock, we'd just hang in the lock futex forever. It is better
 # we exit at some point than hang. 5 minutes with no progress means we're probably deadlocked.
+# This function can still deadlock python since it can't signal the other threads to exit
+# (signals are handled in the main thread) and even os._exit() will wait on non-daemon threads
+# to exit.
 @contextmanager
 def lock_timeout(lock):
-    held = lock.acquire(timeout=5*60)
     try:
+        s = sigmask(signal.SIG_BLOCK, valid_signals)
+        held = lock.acquire(timeout=5*60)
         if not held:
+            bb.server.process.serverlog("Couldn't get the lock for 5 mins, timed out, exiting.\n%s" % traceback.format_stack())
             os._exit(1)
         yield held
     finally:
         lock.release()
+        sigmask(signal.SIG_SETMASK, s)
+
+# A version of lock_timeout without the check that the lock was locked and a shorter timeout
+@contextmanager
+def lock_timeout_nocheck(lock):
+    try:
+        s = sigmask(signal.SIG_BLOCK, valid_signals)
+        l = lock.acquire(timeout=10)
+        yield l
+    finally:
+        if l:
+            lock.release()
+        sigmask(signal.SIG_SETMASK, s)
